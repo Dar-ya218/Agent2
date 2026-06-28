@@ -5,8 +5,9 @@ from functools import lru_cache
 
 
 def langfuse_handler():
-    # TODO(checkpoint 06): return a Langfuse LangChain CallbackHandler.
-    raise NotImplementedError("implement langfuse_handler")
+    from langfuse.langchain import CallbackHandler
+
+    return CallbackHandler()
 
 
 @lru_cache
@@ -17,15 +18,15 @@ def langfuse_client():
 
 
 def traced_config() -> dict:
-    # TODO(checkpoint 06): return the LangChain config dict that attaches the
-    # Langfuse callback handler: {"callbacks": [...]}.
-    raise NotImplementedError("implement traced_config")
+    return {"callbacks": [langfuse_handler()]}
 
 
 def run_traced(question: str, model=None) -> str:
-    # TODO(checkpoint 06): run the graph agent with traced_config() so the run
-    # shows up in Langfuse, then flush the client before returning the answer.
-    raise NotImplementedError("implement run_traced")
+    from meteo_agent.graph import run_agent
+
+    answer = run_agent(question, model=model, config=traced_config())
+    langfuse_client().flush()
+    return answer
 
 
 def main() -> None:
