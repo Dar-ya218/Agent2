@@ -11,8 +11,6 @@ class EvalCase:
     reference_sql: str
 
 
-# The reference SQL computes ground truth FROM the database, so the eval set
-# can never go stale. Add or edit cases freely.
 CASES = [
     EvalCase(
         "What was the hottest day on record, by highest daily maximum temperature? Give the date as YYYY-MM-DD.",
@@ -38,12 +36,17 @@ CASES = [
 
 
 def ground_truth(case: EvalCase) -> str:
-    # TODO(checkpoint 07): run case.reference_sql against a read_only_connection
-    # and return the single scalar result as a string.
-    raise NotImplementedError("implement ground_truth")
+    with read_only_connection() as connection:
+        value = connection.execute(case.reference_sql).fetchone()[0]
+    return str(value)
 
 
 def local_dataset() -> list[dict]:
-    # TODO(checkpoint 07): build a list of {input, expected_output, metadata}
-    # dicts from CASES, computing expected_output via ground_truth(case).
-    raise NotImplementedError("implement local_dataset")
+    return [
+        {
+            "input": case.question,
+            "expected_output": ground_truth(case),
+            "metadata": {"reference_sql": case.reference_sql},
+        }
+        for case in CASES
+    ]

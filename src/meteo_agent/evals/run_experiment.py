@@ -16,9 +16,12 @@ def task(*, item, **_):
 
 
 def contains_reference(*, input, output, expected_output, metadata=None, **_):
-    # TODO(checkpoint 07): return an Evaluation named "contains_reference" whose
-    # value is True when expected_output appears (case-insensitively) in output.
-    raise NotImplementedError("implement contains_reference")
+    passed = expected_output.lower() in (output or "").lower()
+    return Evaluation(
+        name="contains_reference",
+        value=passed,
+        comment=f"expected the answer to contain {expected_output!r}",
+    )
 
 
 def maybe_langfuse_client():
