@@ -11,26 +11,42 @@ from meteo_agent.config import chat_model
 from meteo_agent.prompt import SYSTEM_PROMPT
 from meteo_agent.tools import RunSqlArgs, get_schema, run_sql
 
-# TODO(checkpoint 04): wrap the SAME pure functions from tools.py as LangChain
-# tools. Use StructuredTool.from_function; give run_sql the RunSqlArgs schema.
-LANGCHAIN_TOOLS = []
+LANGCHAIN_TOOLS = [
+    StructuredTool.from_function(
+        func=run_sql,
+        name="run_sql",
+        description="Run a single read-only SQL SELECT query and return the rows.",
+        args_schema=RunSqlArgs,
+    ),
+    StructuredTool.from_function(
+        func=get_schema,
+        name="get_schema",
+        description="Return the database schema: the events table and the daily/monthly/yearly views.",
+    ),
+]
 
 
 def build_agent(model=None, tools=None):
-    # TODO(checkpoint 04): build the LangGraph ReAct loop.
-    #   - bind the tools to the chat model
-    #   - a "model" node that invokes the bound model on state["messages"]
-    #   - a prebuilt ToolNode for "tools"
-    #   - edges: START -> model, model -conditional-> tools/END, tools -> model
-    # Return the compiled graph.
     tools = tools or LANGCHAIN_TOOLS
-    raise NotImplementedError("implement build_agent")
+    bound = (model or chat_model()).bind_tools(tools)
+
+    def call_model(state: MessagesState) -> dict:
+        return {"messages": [bound.invoke(state["messages"])]}
+
+    graph = StateGraph(MessagesState)
+    graph.add_node("model", call_model)
+    graph.add_node("tools", ToolNode(tools))
+    graph.add_edge(START, "model")
+    graph.add_conditional_edges("model", tools_condition)
+    graph.add_edge("tools", "model")
+    return graph.compile()
 
 
 def run_agent(question: str, model=None, config=None) -> str:
-    # TODO(checkpoint 04): invoke the compiled graph with a SystemMessage +
-    # HumanMessage and return the final message's content.
-    raise NotImplementedError("implement run_agent")
+    agent = build_agent(model)
+    initial = {"messages": [SystemMessage(SYSTEM_PROMPT), HumanMessage(question)]}
+    result = agent.invoke(initial, config=config)
+    return result["messages"][-1].content
 
 
 def main() -> None:
