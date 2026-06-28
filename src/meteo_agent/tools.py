@@ -27,40 +27,64 @@ class RunSqlArgs(BaseModel):
 
 
 def read_only_connection() -> sqlite3.Connection:
-    # TODO(checkpoint 02): open the SQLite database at database_path() in
-    # read-only mode (hint: the `file:...?mode=ro` URI form + uri=True).
-    raise NotImplementedError("implement read_only_connection")
+    return sqlite3.connect(f"file:{database_path()}?mode=ro", uri=True)
 
 
 def ensure_read_only(query: str) -> None:
-    # TODO(checkpoint 02): raise ValueError unless `query` is a single
-    # read-only statement. The tests in tests/test_tools.py define the contract:
-    #   - allow only statements starting with SELECT or WITH
-    #   - reject more than one statement (a ';' in the middle)
-    #   - reject any FORBIDDEN_KEYWORDS token
-    raise NotImplementedError("implement ensure_read_only")
+    statement = query.strip().rstrip(";").strip()
+    lowered = statement.lower()
+    if not (lowered.startswith("select") or lowered.startswith("with")):
+        raise ValueError("only SELECT/WITH queries are allowed")
+    if ";" in statement:
+        raise ValueError("only a single statement is allowed")
+    forbidden = {token for token in re.findall(r"[a-z_]+", lowered)} & FORBIDDEN_KEYWORDS
+    if forbidden:
+        raise ValueError(f"forbidden keyword(s): {', '.join(sorted(forbidden))}")
 
 
 def render_table(columns: list[str], rows: list[tuple]) -> str:
-    # TODO(checkpoint 02): render rows as a pipe-delimited table the model can
-    # read. Return "(no rows)" when empty; show None as an empty string; cap at
-    # MAX_ROWS and note the truncation. See tests for the exact format.
-    raise NotImplementedError("implement render_table")
+    if not rows:
+        return "(no rows)"
+    truncated = len(rows) > MAX_ROWS
+    visible = rows[:MAX_ROWS]
+    lines = [" | ".join(columns)]
+    lines += [" | ".join("" if value is None else str(value) for value in row) for row in visible]
+    if truncated:
+        lines.append(f"... (truncated to {MAX_ROWS} rows)")
+    return "\n".join(lines)
 
 
 def run_sql(query: str) -> str:
-    # TODO(checkpoint 02): validate with ensure_read_only, execute against a
-    # read_only_connection, fetch up to MAX_ROWS + 1, and render. Return DB
-    # errors as text ("error: ...") rather than raising, so the model can
-    # self-correct. ValueError from ensure_read_only should still propagate.
-    raise NotImplementedError("implement run_sql")
+    ensure_read_only(query)
+    try:
+        with read_only_connection() as connection:
+            cursor = connection.execute(query)
+            columns = [description[0] for description in cursor.description]
+            rows = cursor.fetchmany(MAX_ROWS + 1)
+    except sqlite3.Error as error:
+        return f"error: {error}"
+    return render_table(columns, rows)
 
 
 def get_schema() -> str:
-    # TODO(checkpoint 02): return a compact description of meteobeguda_events
-    # plus the daily/monthly/yearly views (names + columns), built from
-    # PRAGMA table_info and sqlite_master.
-    raise NotImplementedError("implement get_schema")
+    with read_only_connection() as connection:
+        columns = connection.execute("PRAGMA table_info(meteobeguda_events)").fetchall()
+        views = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'view' ORDER BY name"
+        ).fetchall()
+        view_columns = {}
+        for (view_name,) in views:
+            info = connection.execute(f"PRAGMA table_info({view_name})").fetchall()
+            view_columns[view_name] = [row[1] for row in info]
+
+    table = "table meteobeguda_events (raw sub-daily readings):\n  " + ", ".join(
+        f"{name} {column_type}" for _, name, column_type, *_ in columns
+    )
+    aggregates = "\n".join(
+        f"view {name} (pre-aggregated): " + ", ".join(view_columns[name])
+        for name in view_columns
+    )
+    return f"{table}\n{aggregates}"
 
 
 OPENAI_TOOLS = [
