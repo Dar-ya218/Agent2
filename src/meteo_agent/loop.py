@@ -11,29 +11,56 @@ MAX_STEPS = 8
 
 
 def dispatch_tool(name: str, arguments: dict) -> str:
-    # TODO(checkpoint 03): route a tool call by name to run_sql / get_schema.
-    # Validate run_sql args with RunSqlArgs. Return "error: ..." for unknown
-    # tools or raised exceptions (never raise out of here).
-    raise NotImplementedError("implement dispatch_tool")
+    try:
+        if name == "run_sql":
+            return run_sql(RunSqlArgs.model_validate(arguments).query)
+        if name == "get_schema":
+            return get_schema()
+        return f"error: unknown tool {name!r}"
+    except Exception as error:
+        return f"error: {error}"
 
 
 def assistant_message(message) -> dict:
-    # TODO(checkpoint 03): convert an OpenAI SDK assistant message into the
-    # plain-dict form you append to `messages` (content + any tool_calls).
-    raise NotImplementedError("implement assistant_message")
+    payload: dict = {"role": "assistant", "content": message.content or ""}
+    if message.tool_calls:
+        payload["tool_calls"] = [
+            {
+                "id": call.id,
+                "type": "function",
+                "function": {"name": call.function.name, "arguments": call.function.arguments},
+            }
+            for call in message.tool_calls
+        ]
+    return payload
 
 
 def run_agent(question: str, client=None, model: str | None = None, trace=None) -> str:
-    # TODO(checkpoint 03): drive the agent loop by hand.
-    #   1. seed messages with SYSTEM_PROMPT + the user question
-    #   2. up to MAX_STEPS times: call the chat completions API with OPENAI_TOOLS
-    #   3. if the model returned no tool_calls, return its content (done)
-    #   4. otherwise run each tool call, append a {"role": "tool", ...} result,
-    #      and loop. Call trace(name, arguments) before each tool if provided.
-    # Return a "stopped: ..." message if MAX_STEPS is exhausted.
     client = client or openai_client()
     model = model or model_name()
-    raise NotImplementedError("implement run_agent")
+    messages: list[dict] = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": question},
+    ]
+
+    for _ in range(MAX_STEPS):
+        response = client.chat.completions.create(
+            model=model, messages=messages, tools=OPENAI_TOOLS, temperature=0
+        )
+        message = response.choices[0].message
+        messages.append(assistant_message(message))
+
+        if not message.tool_calls:
+            return message.content or ""
+
+        for call in message.tool_calls:
+            arguments = json.loads(call.function.arguments or "{}")
+            if trace is not None:
+                trace(call.function.name, arguments)
+            result = dispatch_tool(call.function.name, arguments)
+            messages.append({"role": "tool", "tool_call_id": call.id, "content": result})
+
+    return "stopped: reached the maximum number of steps"
 
 
 def log_tool_call(name: str, arguments: dict) -> None:
