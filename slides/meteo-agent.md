@@ -6,6 +6,15 @@ theme:
   name: gruvbox-dark
 ---
 
+# Materials for today
+
+Clone this repo: `github.com/ber2/meteo-agent`
+
+```bash
+gh repo clone ber2/meteo-agent
+```
+
+<!-- end_slide -->
 # About me
 
 <!-- column_layout: [1, 1] -->
@@ -14,16 +23,15 @@ theme:
 
 <!-- column: 1 -->
 
-<!-- font_size: 4 -->
 **ber2.github.io**
 
 **github.com/ber2**
 
 - PhD in Maths
 - Worked in Data for >10 years
-- Currently working as a **Data freelancer**
+- Currently working as a **Data Freelancer**
 - Meetup organiser at **Python Barcelona**
-- I also teach a lot of data analysis and computer science
+- Also a **Data Analysis** and **Computer Science** teacher
 
 
 
@@ -40,9 +48,9 @@ Fact:
 
 Soon, all coding will be delegated to agents and, therefore, getting code to work will be a trivial task.
 
-<!-- pause -->
-
 In consequence, the knowledge that software engineers have accumulated over the last few decades on what makes software work and what not will become irrelevant.
+
+<!-- pause -->
 
 **Do you agree?**
 
@@ -73,11 +81,38 @@ Raise your hand if you...
 <!-- pause -->
 - are a frequent **Python user**
 <!-- pause -->
+  - know what happens if you `import this`
+<!-- pause -->
 - know what **`uv`** is and have used it
 <!-- pause -->
-- regularly use an **AI assistant** for your coding tasks
+- 
+<!-- pause -->
+- regularly use an **AI assistant** for your coding tasks:
+  - IDE integrations: Github Copilot, Cursor, etc
+<!-- pause -->
+  - CLI tools: Claude Code, Gemini CLI, Cline, etc  
+<!-- pause -->
+- are comfortable running **Docker** containers
 <!-- pause -->
 - have shipped an **AI agent to production**
+ 
+<!-- pause -->
+## On access to LLMs
+
+Raise your hand if you:
+<!-- pause -->
+- Have an API token for an LLM provider:
+<!-- pause -->
+  - Google AI (Gemini via AI Studio or Vertex AI)
+<!-- pause -->
+  - OpenAI API (GPT)
+<!-- pause -->
+  - Anthropic API (Haiku, Sonnet, Opus)
+<!-- pause -->
+- Are capable of running LLMs locally via `Ollama`.
+<!-- pause -->
+- Any other means of interacting with LLMs?
+
 
 <!-- end_slide -->
 
@@ -174,7 +209,8 @@ We get to write easy Python while obtaining Rust-level performance. That's why.
 
 # The promise
 
-You should be able to take this workshop away and repeat it at home for free.
+You should be able to take this workshop away and repeat it at home for free.\
+Without giving your money or personal data away.
 
 We favour open LLMs and open-source services that you can run locally.
 
@@ -186,7 +222,6 @@ Token poverty is real.
 
 <!-- pause -->
 It is hard to get results without:
-<!-- pause -->
 - paying a third-party to use their closed LLM
 <!-- pause -->
 - paying a third-party for their GPU
@@ -225,17 +260,20 @@ Underneath, most providers expose APIs that are **OpenAI-compatible**.
 Swapping providers is an env change, not a code change.
 
 ```bash
-# free, local
+# free, local, fast on CPU, sufficient for today
+OPENAI_BASE_URL=http://localhost:11434/v1    MODEL=qwen2.5:2b
+# still free, local, slightly slower, better results
 OPENAI_BASE_URL=http://localhost:11434/v1    MODEL=qwen2.5:7b
-# bigger, hosted
-OPENAI_BASE_URL=https://ollama.com/v1        MODEL=qwen2.5:72b
+
+# bigger, hosted, 
+OPENAI_BASE_URL=http://localhost:11434/v1    MODEL=qwen2.5:cloud
 
 # someone else's cloud
 OPENAI_BASE_URL=https://api.openai.com/v1        MODEL=gpt-4o-mini
 OPENAI_BASE_URL=https://api.anthropic.com/v1/    MODEL=claude-opus-4-8
 ```
 
-Today we run on **ollama** by default — local for free, cloud for muscle.
+Today we run on **ollama** by default
 
 <!-- end_slide -->
 
